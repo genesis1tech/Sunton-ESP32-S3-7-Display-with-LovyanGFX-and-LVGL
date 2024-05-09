@@ -9,12 +9,11 @@
 #include <Arduino.h>
 #include "terminal8048.h"
 
-#include "tswift_ad.h"
-#include "coke_ad.h"
-#include "pepsi_ad.h"
-#include "coke_ad2.h"
-#include "coke_recycle.h"
-#include "coke_recycle_gen.h"
+#include "swift_8bit.h"
+#include "recycle1_8bit.h"
+#include "pepsi_8bit.h"
+#include "lower-8bit.h"
+
 
 
 #define SCREEN_W 800
@@ -30,7 +29,7 @@
 #define SCANNER_TX 43
 #define SCANNER_RX 44
 
-const uint16_t* images[] = {coke_recycle_gen, coke_ad, tswift_ad, pepsi_ad, coke_ad2, coke_recycle};
+const uint8_t* images[] = {swift_8bit, recycle1_8bit, pepsi_8bit, lower_8bit};
 int imageCount = sizeof(images) / sizeof(images[0]);
 
 LGFX lcd;
