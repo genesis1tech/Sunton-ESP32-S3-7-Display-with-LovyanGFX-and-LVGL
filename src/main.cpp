@@ -68,19 +68,3 @@ void setup(){
 
 void loop(){}
 
-/*
-void loop(){
-lcd.pushImageDMA(0, 0, 800, 480, coke_recycle_gen);
-delay(5000);
-lcd.pushImageDMA(0, 0, 800, 480, coke_ad);
-delay(5000);
-lcd.pushImageDMA(0, 0, 800, 480, tswift_ad);
-delay(5000);
-lcd.pushImageDMA(0, 0, 800, 480, pepsi_ad);
-delay(5000);
-lcd.pushImageDMA(0, 0, 800, 480, coke_ad2);
-delay(5000);
-lcd.pushImageDMA(0, 0, 800, 480, coke_recycle);
-delay(5000);
-}
-*/
