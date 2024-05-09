@@ -10,7 +10,7 @@
 #else
 #define PROGMEM
 #endif
-static const unsigned char RecycleGeneric100_8bit[] PROGMEM =
+static const unsigned char recycle1_8bit[] PROGMEM =
 	"T7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%I"
 	"T7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%I"
 	"T7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%IT7%I"

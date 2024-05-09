@@ -10,7 +10,7 @@
 #else
 #define PROGMEM
 #endif
-static const unsigned char SwiftRecycle100_8bit[] PROGMEM =
+static const unsigned char swift_8bit[] PROGMEM =
 	"-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG"
 	"-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG"
 	"-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG-3UG"

@@ -10,7 +10,7 @@
 #else
 #define PROGMEM
 #endif
-static const unsigned char PepsiRecycle100_8bit[] PROGMEM =
+static const unsigned char pepsi_8bit[] PROGMEM =
 	"_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T["
 	"_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T["
 	"_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T[_`T["

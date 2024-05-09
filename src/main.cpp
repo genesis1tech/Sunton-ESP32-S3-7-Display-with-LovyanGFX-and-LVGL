@@ -44,7 +44,7 @@ void imageTaskcode( void * pvParameters ){
  for (;;) {     
         for (int i = 0; i < imageCount; i++) {
             //xSemaphoreTake(semaphore, portMAX_DELAY);
-            lcd.pushImageDMA(0, 0, 800, 480, images[i]);
+            lcd.pushImage(0, 0, 800, 480, images[i]);
             delay(8000); // Display each image for 8 seconds
             //xSemaphoreGive(semaphore);
             }
@@ -54,7 +54,8 @@ void imageTaskcode( void * pvParameters ){
 void setup(){
   lcd.init();
   lcd.setBrightness(200);
-  lcd.setSwapBytes(true); // Adjust depending on your LCD driver
+  lcd.setColorDepth(8);
+  //lcd.setSwapBytes(true); // Adjust depending on your LCD driver
   SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
   sprite.createSprite(800, 480);
   
@@ -65,6 +66,7 @@ void setup(){
   delay(500); 
 }
 
+void loop(){}
 /*
 void loop(){
 lcd.pushImageDMA(0, 0, 800, 480, coke_recycle_gen);

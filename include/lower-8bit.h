@@ -1,17 +1,16 @@
-/*  GIMP header image file format (RGB): C:\Users\Marcus\Pictures\RE_ Version 3 - Screen Ads\Lower-Portion-Arena-Ad-100-8bit.h  */
-
-static unsigned int width = 800;
-static unsigned int height = 480;
-
-/*  Call this macro repeatedly.  After each use, the pixel data can be extracted  */
-
-#define HEADER_PIXEL(data,pixel) {\
-pixel[0] = (((data[0] - 33) << 2) | ((data[1] - 33) >> 4)); \
-pixel[1] = ((((data[1] - 33) & 0xF) << 4) | ((data[2] - 33) >> 2)); \
-pixel[2] = ((((data[2] - 33) & 0x3) << 6) | ((data[3] - 33))); \
-data += 4; \
-}
-static char *header_data =
+#ifdef __AVR__
+#include <avr/io.h>
+#include <avr/pgmspace.h>
+#elif defined(ESP8266)
+#include <pgmspace.h>
+#elif defined(__IMXRT1052__) || defined(__IMXRT1062__)
+// PROGMEM is defefind for T4 to place data in specific memory section
+#undef PROGMEM
+#define PROGMEM
+#else
+#define PROGMEM
+#endif
+static const unsigned char lower_8bit[] PROGMEM =
 	"\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H"
 	"\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H"
 	"\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H\\2]H"
