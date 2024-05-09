@@ -66,6 +66,8 @@ void setup(){
   delay(500); 
 }
 
+void loop(){}
+
 /*
 void loop(){
 lcd.pushImageDMA(0, 0, 800, 480, coke_recycle_gen);
