@@ -37,9 +37,9 @@ LGFX lcd;
 LGFX_Sprite sprite(&lcd);
 
 //Tasks
-TaskHandle_t imageTask;
-TaskHandle_t scanTask;
-//SemaphoreHandle_t semaphore;
+TaskHandle_t imageTaskHandle = NULL;
+TaskHandle_t scanTaskHandle = NULL;
+SemaphoreHandle_t semaphore;
 
 void imageTaskcode( void * pvParameters ){
  for (;;) {     
