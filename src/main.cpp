@@ -49,7 +49,7 @@ void imageTaskcode(void * pvParameters) {
 
     for (;;) {
         // Display the image at the current index
-        lcd.pushImageDMA(0, 0, 480, 270, images[currentIndex]);
+        lcd.pushImageDMA(0, 0, 800, 480, images[currentIndex]);
         //txtLayer.pushImageDMA(0, 0, 480, 50, scantext);
         //txtLayer.pushSprite(0, 272);
         // Delay to show image, delay is interruptible by notifications
