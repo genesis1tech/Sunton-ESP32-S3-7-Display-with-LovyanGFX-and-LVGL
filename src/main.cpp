@@ -35,12 +35,41 @@ int imageCount = sizeof(images) / sizeof(images[0]);
 
 LGFX lcd;
 LGFX_Sprite sprite(&lcd);
+LGFX_Sprite txtLayer(&lcd);
+LGFX_Sprite background(&lcd);
 
 //Tasks
 TaskHandle_t imageTaskHandle = NULL;
 TaskHandle_t scanTaskHandle = NULL;
 SemaphoreHandle_t semaphore;
 
+void imageTaskcode(void * pvParameters) {
+    uint32_t ulNotificationValue;
+    int currentIndex = 0;  // Track the current image index
+
+    for (;;) {
+        // Display the image at the current index
+        lcd.pushImageDMA(0, 0, 480, 270, images[currentIndex]);
+        //txtLayer.pushImageDMA(0, 0, 480, 50, scantext);
+        //txtLayer.pushSprite(0, 272);
+        // Delay to show image, delay is interruptible by notifications
+        for (int delayCount = 0; delayCount < 500; delayCount++) {
+            if (xTaskNotifyWait(0x00, ULONG_MAX, &ulNotificationValue, pdMS_TO_TICKS(10))) {
+                // Check if there is a notification to stop
+                if (ulNotificationValue == 1) {
+                    // Clear notification and wait for the go-ahead to resume
+                    ulNotificationValue = 0;
+                    xTaskNotifyWait(0x00, ULONG_MAX, NULL, portMAX_DELAY);
+                }
+                break;
+            }
+        }
+        // Move to next image
+        currentIndex = (currentIndex + 1) % imageCount;
+    }
+}
+
+/*
 void imageTaskcode( void * pvParameters ){
  for (;;) {     
         for (int i = 0; i < imageCount; i++) {
@@ -51,6 +80,8 @@ void imageTaskcode( void * pvParameters ){
             }
           }
   }
+*/
+
 
 void setup(){
   lcd.init();
@@ -58,12 +89,11 @@ void setup(){
   lcd.setSwapBytes(true); // Adjust depending on your LCD driver
   SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
   sprite.createSprite(800, 480);
+  txtLayer.createSprite(480,100);
   
-  //semaphore = xSemaphoreCreateMutex();
-
   //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
-  xTaskCreatePinnedToCore(imageTaskcode, "imageTask", 10000, NULL, 1, &imageTask, 0);                  
-  delay(500); 
+  xTaskCreate(imageTaskcode, "Image Task", 10000, NULL, 1, &imageTaskHandle);                 
+  //xTaskCreate(scanTaskcode, "Scan Task", 10000, NULL, 2, &scanTaskHandle); // Higher priority
 }
 
 void loop(){}
