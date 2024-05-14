@@ -82,6 +82,177 @@ const char* filename = "/supabase_data.json"; // File path in SPIFFS
 
 const long interval2 = 300000; // Interval set to 5 minutes (300000 milliseconds)
 
+void getSupabaseData() {
+    if (data.isEmpty()) {
+        Serial.println("Error: Scanned data is empty.");
+        return; // Early exit if data is empty.
+    }
+
+    if (data.startsWith("http://") || data.startsWith("https://")) {
+        lcd.clearDisplay();
+        //M5.Spk.PlaySound(dingdong, sizeof(dingdong)); 
+        //displayRescanMessage();
+        delay(3000);
+        return; // Early exit for URL data.
+    }
+
+    if (!SPIFFS.begin()) {
+        Serial.println("Failed to mount file system");
+        return;
+    }
+
+    File file = SPIFFS.open("/barcodes.txt", FILE_READ);
+    if (!file) {
+        Serial.println("Failed to open file for reading");
+        return;
+    }
+
+    bool dataExists = false;
+    data.trim(); // Ensure data is trimmed before use
+
+    Serial.println("Starting to read the file:");
+    Serial.print("Scanned data: '");
+    Serial.print(data);
+    Serial.println("'");
+
+    while (file.available()) {
+        String barcode = file.readStringUntil('\n');
+        barcode.trim(); // Clean up the barcode string
+
+        Serial.print("Read barcode: '");
+        Serial.print(barcode);
+        Serial.println("'");
+
+        if (!barcode.isEmpty() && barcode.indexOf(data) != -1) { // Ensure non-empty barcode and substring match
+            Serial.println("Match found: " + barcode);
+            dataExists = true;
+            break;
+        }
+    }
+
+    file.close();
+
+    if (!dataExists) {
+        Serial.print("No match found for barcode: '");
+        Serial.print(data);
+        Serial.println("'");
+    }
+}
+
+void fetchDataAndWriteToFile() {
+    Serial.println("Fetching data from Supabase...");
+
+    HTTPClient http;
+    http.begin(supabaseLKP);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("apikey", supabaseAPIKey);
+    int httpResponseCode = http.GET();
+
+    if (httpResponseCode == 200) {
+        String payload = http.getString();
+        Serial.println("Data fetched successfully.");
+
+        if (!SPIFFS.begin()) {
+            Serial.println("An Error has occurred while mounting SPIFFS");
+            return;
+        }
+
+        File file = SPIFFS.open("/barcodes.txt", FILE_WRITE);
+        if (!file) {
+            Serial.println("Failed to open file for writing");
+            return;
+        }
+
+        DynamicJsonDocument doc(10240); // Adjust according to your data
+        deserializeJson(doc, payload);
+        JsonArray array = doc.as<JsonArray>();
+
+        for (JsonVariant v : array) {
+            file.println(v["barcode"].as<String>());
+        }
+
+        file.close();
+        Serial.println("File written successfully");
+    } else {
+        Serial.print("Error during HTTP request: ");
+        Serial.println(httpResponseCode);
+    }
+
+    http.end();
+}
+
+void fetchDataTask(void *parameter) {
+    for(;;) { // Infinite loop for the task
+        unsigned long currentMillis = millis();
+        static unsigned long previousMillis = 0;
+
+        if (currentMillis - previousMillis >= interval2) {
+            previousMillis = currentMillis;
+            Serial.println("Fetching and writing data...");
+            fetchDataAndWriteToFile(); // Fetch and store data every 5 minutes
+            Serial.println("Data fetched successfully.");
+        }
+
+        vTaskDelay(100 / portTICK_PERIOD_MS); // Delay a bit to avoid hogging the CPU
+    }
+}
+
+void fetchProductDetails() {
+    HTTPClient http;
+    String apiKey = "a595b6f89e81c6ea6ed66c27bdf1b393b720a0aa948f90d780a295ebe4149b1f";
+    String requestURL = "https://go-upc.com/api/v1/code/" + data + "?key=" + apiKey;
+
+    http.begin(requestURL);
+    int httpResponseCode = http.GET();
+    
+    if (httpResponseCode > 0) {
+        String response = http.getString();
+        http.end(); // Close the connection to free resources
+
+        DynamicJsonDocument doc(2048); // Adjust based on your JSON response size
+        deserializeJson(doc, response);
+        
+        // Extract barcode details from the API
+        productName = doc["product"]["name"].as<String>();
+        productBrand = doc["product"]["brand"].as<String>();
+        productCategory = doc["product"]["category"].as<String>();
+        productName.toLowerCase(); // Convert to lowercase for easier comparison
+        productCategory.toLowerCase();
+
+        // List of categories to check against, in lowercase
+        String categories[] = {"coffee", "drink", "drinks", "soda", "juice", "water", "beverages", "milk", "tea", "beer", "wine", "liquor", "alcoholic"};
+        
+
+
+        // Check if productCategory is in the list of specified categories
+        for (int i = 0; i < (sizeof(categories) / sizeof(categories[0])); i++) {
+            if (productCategory.indexOf(categories[i]) != -1) {
+                categoryMatch = true;
+                break; // Exit the loop if a match is found
+            }
+        }
+
+        // Check if productName contains "oz", "ounce", "ounces", etc.
+        String units[] = {"oz", "ounce", "ounces", "fl oz", "ml", "liter"};
+        for (int i = 0; i < (sizeof(units) / sizeof(units[0])); i++) {
+            if (productName.indexOf(units[i]) != -1) {
+                nameContainsOzOrRelated = true;
+                break; // Exit the loop if a match is found
+            }
+        }
+
+        // Output the result based on categoryMatch and nameContainsOzOrRelated
+        if (categoryMatch && nameContainsOzOrRelated) {
+            Serial.println("Match found: " + productName);
+        } else {
+            Serial.println("No match found.");
+        }
+    } else {
+        Serial.print("HTTP GET request failed with error: ");
+        Serial.println(httpResponseCode);
+    }
+}
+
 void scanTaskcode(void * pvParameters) {
     for (;;) {
         if (Serial2.available()) {
@@ -104,7 +275,6 @@ void scanTaskcode(void * pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(10)); // Check for new data every 10ms
     }
 }
-
 
 void imageTaskcode(void * pvParameters) {
     uint32_t ulNotificationValue;
@@ -192,180 +362,5 @@ void setup(){
 
 void loop(){}
 
-
-void getSupabaseData() {
-    if (data.isEmpty()) {
-        Serial.println("Error: Scanned data is empty.");
-        return; // Early exit if data is empty.
-    }
-
-    if (data.startsWith("http://") || data.startsWith("https://")) {
-        lcd.clearDisplay();
-        //M5.Spk.PlaySound(dingdong, sizeof(dingdong)); 
-        //displayRescanMessage();
-        delay(3000);
-        return; // Early exit for URL data.
-    }
-
-    if (!SPIFFS.begin()) {
-        Serial.println("Failed to mount file system");
-        return;
-    }
-
-    File file = SPIFFS.open("/barcodes.txt", FILE_READ);
-    if (!file) {
-        Serial.println("Failed to open file for reading");
-        return;
-    }
-
-    bool dataExists = false;
-    data.trim(); // Ensure data is trimmed before use
-
-    Serial.println("Starting to read the file:");
-    Serial.print("Scanned data: '");
-    Serial.print(data);
-    Serial.println("'");
-
-    while (file.available()) {
-        String barcode = file.readStringUntil('\n');
-        barcode.trim(); // Clean up the barcode string
-
-        Serial.print("Read barcode: '");
-        Serial.print(barcode);
-        Serial.println("'");
-
-        if (!barcode.isEmpty() && barcode.indexOf(data) != -1) { // Ensure non-empty barcode and substring match
-            Serial.println("Match found: " + barcode);
-            dataExists = true;
-            break;
-        }
-    }
-
-    file.close();
-
-    if (!dataExists) {
-        Serial.print("No match found for barcode: '");
-        Serial.print(data);
-        Serial.println("'");
-    }
-}
-
-
-
-
-void fetchDataAndWriteToFile() {
-    Serial.println("Fetching data from Supabase...");
-
-    HTTPClient http;
-    http.begin(supabaseLKP);
-    http.addHeader("Content-Type", "application/json");
-    http.addHeader("apikey", supabaseAPIKey);
-    int httpResponseCode = http.GET();
-
-    if (httpResponseCode == 200) {
-        String payload = http.getString();
-        Serial.println("Data fetched successfully.");
-
-        if (!SPIFFS.begin()) {
-            Serial.println("An Error has occurred while mounting SPIFFS");
-            return;
-        }
-
-        File file = SPIFFS.open("/barcodes.txt", FILE_WRITE);
-        if (!file) {
-            Serial.println("Failed to open file for writing");
-            return;
-        }
-
-        DynamicJsonDocument doc(10240); // Adjust according to your data
-        deserializeJson(doc, payload);
-        JsonArray array = doc.as<JsonArray>();
-
-        for (JsonVariant v : array) {
-            file.println(v["barcode"].as<String>());
-        }
-
-        file.close();
-        Serial.println("File written successfully");
-    } else {
-        Serial.print("Error during HTTP request: ");
-        Serial.println(httpResponseCode);
-    }
-
-    http.end();
-}
-
-void fetchDataTask(void *parameter) {
-    for(;;) { // Infinite loop for the task
-        unsigned long currentMillis = millis();
-        static unsigned long previousMillis = 0;
-
-        if (currentMillis - previousMillis >= interval2) {
-            previousMillis = currentMillis;
-            Serial.println("Fetching and writing data...");
-            fetchDataAndWriteToFile(); // Fetch and store data every 5 minutes
-            Serial.println("Data fetched successfully.");
-        }
-
-        vTaskDelay(100 / portTICK_PERIOD_MS); // Delay a bit to avoid hogging the CPU
-    }
-}
-
-
-void fetchProductDetails() {
-    HTTPClient http;
-    String apiKey = "a595b6f89e81c6ea6ed66c27bdf1b393b720a0aa948f90d780a295ebe4149b1f";
-    String requestURL = "https://go-upc.com/api/v1/code/" + data + "?key=" + apiKey;
-
-    http.begin(requestURL);
-    int httpResponseCode = http.GET();
-    
-    if (httpResponseCode > 0) {
-        String response = http.getString();
-        http.end(); // Close the connection to free resources
-
-        DynamicJsonDocument doc(2048); // Adjust based on your JSON response size
-        deserializeJson(doc, response);
-        
-        // Extract barcode details from the API
-        productName = doc["product"]["name"].as<String>();
-        productBrand = doc["product"]["brand"].as<String>();
-        productCategory = doc["product"]["category"].as<String>();
-        productName.toLowerCase(); // Convert to lowercase for easier comparison
-        productCategory.toLowerCase();
-
-        // List of categories to check against, in lowercase
-        String categories[] = {"coffee", "drink", "drinks", "soda", "juice", "water", "beverages", "milk", "tea", "beer", "wine", "liquor", "alcoholic"};
-        
-
-
-        // Check if productCategory is in the list of specified categories
-        for (int i = 0; i < (sizeof(categories) / sizeof(categories[0])); i++) {
-            if (productCategory.indexOf(categories[i]) != -1) {
-                categoryMatch = true;
-                break; // Exit the loop if a match is found
-            }
-        }
-
-        // Check if productName contains "oz", "ounce", "ounces", etc.
-        String units[] = {"oz", "ounce", "ounces", "fl oz", "ml", "liter"};
-        for (int i = 0; i < (sizeof(units) / sizeof(units[0])); i++) {
-            if (productName.indexOf(units[i]) != -1) {
-                nameContainsOzOrRelated = true;
-                break; // Exit the loop if a match is found
-            }
-        }
-
-        // Output the result based on categoryMatch and nameContainsOzOrRelated
-        if (categoryMatch && nameContainsOzOrRelated) {
-            Serial.println("Match found: " + productName);
-        } else {
-            Serial.println("No match found.");
-        }
-    } else {
-        Serial.print("HTTP GET request failed with error: ");
-        Serial.println(httpResponseCode);
-    }
-}
 
 
