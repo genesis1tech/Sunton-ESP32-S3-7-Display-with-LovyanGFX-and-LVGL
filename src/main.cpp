@@ -6,6 +6,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <FS.h>
+#include <SPIFFS.h>
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -22,6 +23,7 @@
 #include "coke_ad2.h"
 #include "coke_recycle.h"
 #include "coke_recycle_gen.h"
+
 
 
 #define SCREEN_W 800
@@ -81,6 +83,125 @@ const char* supabaseAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 const char* filename = "/supabase_data.json"; // File path in SPIFFS
 
 const long interval2 = 300000; // Interval set to 5 minutes (300000 milliseconds)
+
+String getChipID() {
+    uint64_t chipid = ESP.getEfuseMac(); // The chip ID is essentially its MAC address
+    char chipidStr[23];
+    sprintf(chipidStr, "%04X%08X", (uint16_t)(chipid>>32), (uint32_t)chipid);
+    return String(chipidStr); // Convert the char array to a String and return it
+}
+
+
+void systemLoading() {
+  lcd.clearDisplay();
+  lcd.fillScreen(TFT_WHITE);
+  lcd.setTextColor(TFT_RED);
+  
+  // Set text datum to middle-center.
+  lcd.setTextDatum(MC_DATUM);
+
+  // Adjust the text size as necessary; using size 3 as a starting point.
+  lcd.setTextSize(3);  // You can increase this if the text appears too small.
+
+  // Center text horizontally at 400 (since 800 / 2 = 400)
+  // Adjust the vertical positions to better suit the larger screen size.
+  int centerX = 400;  // Center position of the width
+  int centerY = 240;  // Center position of the height (somewhat arbitrary for better visual appearance)
+
+  // Display the text block
+  lcd.drawString("SYSTEM LOADING.", centerX, centerY - 30);  // Adjust y-coordinate as needed
+  lcd.drawString("PLEASE WAIT . . .", centerX, centerY + 30);  // Adjust y-coordinate as needed
+}
+
+
+void legalText() {
+  lcd.clearDisplay();
+  lcd.fillScreen(TFT_BLACK);
+  lcd.setTextColor(TFT_WHITE);
+
+  // Set text datum to middle-center.
+  lcd.setTextDatum(MC_DATUM);
+
+  // Set a larger text size for better visibility on the new screen.
+  lcd.setTextSize(2);  // Adjust this value as needed for visual preference.
+
+  // Calculate the vertical starting position to better center the text block
+  int startY = 120;  // Starting Y position, adjust based on total text height
+
+  // Display the text block, now centered at x=400 (horizontal center of 800px width)
+  lcd.drawString("The Topper Stopper(TM)", 400, startY); // startY can be adjusted as needed
+  lcd.drawString("(c)2023 Genesis 1 Technologies LLC", 400, startY + 30);
+  lcd.drawString("All Rights Reserved.", 400, startY + 60);
+  lcd.drawString("PATENT PENDING.", 400, startY + 90);
+
+  // Continue with additional details
+  lcd.drawString("Manufactured by", 400, startY + 120);
+  lcd.drawString("Genesis 1 Technologies LLC", 400, startY + 150);
+  lcd.drawString("Charlotte, North Carolina, 28216", 400, startY + 180);
+  lcd.drawString("For more information, visit www.genesis1.tech", 400, startY + 210);
+  lcd.drawString("Unauthorized reproduction or distribution", 400, startY + 240);
+  lcd.drawString("is prohibited.", 400, startY + 270);
+}
+
+void displayRescanMessage() {
+  lcd.clearDisplay();
+  lcd.fillScreen(TFT_RED);
+  lcd.setTextColor(TFT_WHITE); // Set text color to white with black background
+  lcd.setTextDatum(MC_DATUM);
+  lcd.setTextSize(4); // Increased text size for better visibility on larger screen
+
+  int centerX = 400; // Center of the width
+  int centerY = 240; // Approximate center of the height
+
+  // Manually position each line to fit the larger text and screen size
+  lcd.drawString("PLEASE RESCAN", centerX, centerY - 60);
+  lcd.drawString("BARCODE INSTEAD", centerX, centerY);
+  lcd.drawString("OF QR CODE!", centerX, centerY + 60);
+}
+
+void displaySorryMessage() {
+  lcd.clearDisplay();
+  lcd.fillScreen(TFT_RED);
+  lcd.setTextColor(TFT_WHITE); // Set text color to white with black background
+  lcd.setTextDatum(MC_DATUM);
+  lcd.setTextSize(4); // Increased text size for better visibility on larger screen
+
+  int centerX = 400; // Center of the width
+  int centerY = 240; // Approximate center of the height
+
+  // Adjust vertical positions to better center the block of text
+  lcd.drawString("SORRY. WE", centerX, centerY - 60);
+  lcd.drawString("CAN'T ACCEPT", centerX, centerY);
+  lcd.drawString("THIS ITEM!", centerX, centerY + 60);
+}
+
+void WiFiSetup() {
+    lcd.clearDisplay();
+    lcd.fillScreen(TFT_RED);  // Set the background to red
+    lcd.setTextColor(TFT_WHITE); // Set text color to white
+    lcd.setTextDatum(MC_DATUM);
+    lcd.setTextSize(3); // Adjust text size as needed for visibility
+
+    int centerX = 400; // Center of the width
+    int centerY = 240; // Approximate center of the height
+
+    // Adjust vertical positions to better center the block of text
+    lcd.drawString("Connect your phone to", centerX, centerY - 60);
+    lcd.drawString("WiFi Access Point", centerX, centerY - 20);
+    lcd.drawString("\"TopperStopperAP\"", centerX, centerY + 20);
+    lcd.drawString("Password \"recycleit\"", centerX, centerY + 60);
+}
+
+void qrCheck(){
+      // Check if the data starts with "http" or "https"
+      if (data.startsWith("http://") || data.startsWith("https://")) // Check for URLs
+      {
+        lcd.clearDisplay();
+        displayRescanMessage();
+        delay(3000); // Display time before the next action
+        return; // Skip the rest of the loop iteration to not process URL as product barcode
+      }
+}
 
 void getSupabaseData() {
     if (data.isEmpty()) {
@@ -253,6 +374,7 @@ void fetchProductDetails() {
     }
 }
 
+
 void scanTaskcode(void * pvParameters) {
     for (;;) {
         if (Serial2.available()) {
@@ -302,6 +424,104 @@ void imageTaskcode(void * pvParameters) {
     }
 }
 
+/*
+void scanTaskcode(void * pvParameters) {
+if (Serial2.available()) {
+        String data = Serial2.readStringUntil('\n');
+        //M5.Lcd.clear();
+        //M5.Lcd.drawBitmap(0, 0, 320, 240, (uint16_t*)ai_thinking);
+        Serial.println(data);
+        delay(50); // Small delay to ensure complete reading
+
+        if (data.isEmpty()) {
+        Serial.println("Error: Scanned data is empty.");
+        return; // Early exit if data is empty.
+    }
+
+    if (data.startsWith("http://") || data.startsWith("https://")) {
+       lcd.clearDisplay();
+        //M5.Spk.PlaySound(dingdong, sizeof(dingdong)); 
+        displayRescanMessage();
+        delay(3000);
+        return; // Early exit for URL data.
+    }
+
+    if (!SPIFFS.begin()) {
+        Serial.println("Failed to mount file system");
+        return;
+    }
+
+    File file = SPIFFS.open("/barcodes.txt", FILE_READ);
+    if (!file) {
+        Serial.println("Failed to open file for reading");
+        return;
+    }
+
+    bool dataExists = false;
+    data.trim(); // Ensure data is trimmed before use
+
+    Serial.println("Starting to read the file:");
+    Serial.print("Scanned data: '");
+    Serial.print(data);
+    Serial.println("'");
+
+    while (file.available()) {
+        String barcode = file.readStringUntil('\n');
+        barcode.trim(); // Clean up the barcode string
+
+        Serial.print("Read barcode: '");
+        Serial.print(barcode);
+        Serial.println("'");
+
+        if (!barcode.isEmpty() && barcode.indexOf(data) != -1) { // Ensure non-empty barcode and substring match
+            Serial.println("Match found: " + barcode);
+            dataExists = true;
+            break;
+        }
+    }
+
+    file.close();
+
+    if (!dataExists) {
+        Serial.print("No match found for barcode: '");
+        Serial.print(data);
+        Serial.println("'");
+    }
+
+        //qrCheck(); // Assume this sets some flags
+        //getSupabaseData(); // Assume this updates `dataExists` and `categoryMatch`
+        Serial.println(dataExists);
+        if (dataExists || categoryMatch) {
+            //myServo.write(pos_open); // Open door
+            lcd.clearDisplay();
+            //M5.Lcd.drawBitmap(0, 0, 320, 240, (uint16_t*)doorOpening);
+            //M5.Spk.PlaySound(bin_opening, sizeof(bin_opening));
+            delay(1000);
+            productName.toUpperCase();
+            
+            delay(2500);
+
+            //myServo.write(pos_closed); // Close door
+            delay(100);
+            lcd.clearDisplay();
+            //M5.Lcd.drawBitmap(0, 0, 320, 240, (uint16_t*)scanWin_cra);
+            //M5.Spk.PlaySound(success, sizeof(success));
+            // Send barcode data and productName to Supabase
+            //sendDataToSupabase(data, productName, productBrand, productCategory);
+            delay(5000); // Display time before the next action
+            lcd.clearDisplay();
+        } else {
+            // Product does not match category list
+            lcd.clearDisplay();
+            //M5.Spk.PlaySound(dingdong, sizeof(dingdong)); 
+            displaySorryMessage();
+            delay(3000); // Display time before the next action
+        }
+    }
+}
+
+*/
+
 
 void setup(){
   lcd.init();
@@ -315,12 +535,7 @@ void setup(){
   // Begin Wifi Configurations //
     WiFi.mode(WIFI_STA);
     WiFiManager wm;
-            lcd.clearDisplay();
-            lcd.fillScreen(TFT_YELLOW);
-            lcd.setTextDatum(MC_DATUM);
-            lcd.setTextColor(TFT_BLACK);
-            lcd.setTextSize(3);
-            lcd.print("Scan Wifi. . . .");
+    WiFiSetup();
     //wm.resetSettings();  //Remove after testing          
     //******** Add WiFi Ready Screen Here M5.Lcd.drawBitmap(0, 0, 320, 240, (uint16_t *)wifi_ready);
 
