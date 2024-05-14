@@ -27,8 +27,9 @@
 #define SD_CS 10
  
 
-#define SCANNER_TX 43
-#define SCANNER_RX 44
+#define SCANNER_TX 20
+#define SCANNER_RX 19
+
 
 const uint16_t* images[] = {coke_recycle_gen, coke_ad, tswift_ad, pepsi_ad, coke_ad2, coke_recycle};
 int imageCount = sizeof(images) / sizeof(images[0]);
@@ -42,6 +43,30 @@ LGFX_Sprite background(&lcd);
 TaskHandle_t imageTaskHandle = NULL;
 TaskHandle_t scanTaskHandle = NULL;
 SemaphoreHandle_t semaphore;
+
+void scanTaskcode(void * pvParameters) {
+    for (;;) {
+        if (Serial2.available()) {
+            // Notify the image task to stop current operation
+            xTaskNotify(imageTaskHandle, 0x01, eSetBits);
+
+            lcd.clearDisplay();
+            lcd.fillScreen(TFT_GREEN);
+            lcd.setTextDatum(MC_DATUM);
+            lcd.setTextColor(TFT_BLACK);
+            lcd.setTextSize(3);
+            String line = Serial2.readStringUntil('\n');
+            Serial.println(line); 
+            lcd.println(line);
+            vTaskDelay(pdMS_TO_TICKS(2700)); // Simulate processing time
+
+            // Optional: Notify again if you want the image task to continue
+            xTaskNotify(imageTaskHandle, 0x00, eSetBits);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10)); // Check for new data every 10ms
+    }
+}
+
 
 void imageTaskcode(void * pvParameters) {
     uint32_t ulNotificationValue;
@@ -69,22 +94,10 @@ void imageTaskcode(void * pvParameters) {
     }
 }
 
-/*
-void imageTaskcode( void * pvParameters ){
- for (;;) {     
-        for (int i = 0; i < imageCount; i++) {
-            //xSemaphoreTake(semaphore, portMAX_DELAY);
-            lcd.pushImageDMA(0, 0, 800, 480, images[i]);
-            delay(8000); // Display each image for 8 seconds
-            //xSemaphoreGive(semaphore);
-            }
-          }
-  }
-*/
-
 
 void setup(){
   lcd.init();
+  Serial2.begin(9600, SERIAL_8N1, SCANNER_RX, SCANNER_TX);
   lcd.setBrightness(200);
   lcd.setSwapBytes(true); // Adjust depending on your LCD driver
   SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
@@ -93,7 +106,7 @@ void setup(){
   
   //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
   xTaskCreate(imageTaskcode, "Image Task", 10000, NULL, 1, &imageTaskHandle);                 
-  //xTaskCreate(scanTaskcode, "Scan Task", 10000, NULL, 2, &scanTaskHandle); // Higher priority
+  xTaskCreate(scanTaskcode, "Scan Task", 10000, NULL, 2, &scanTaskHandle); // Higher priority
 }
 
 void loop(){}
