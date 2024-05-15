@@ -8,6 +8,7 @@
 #include <FS.h>
 #include <SPIFFS.h>
 #include <Arduino.h>
+#include <ESP32Servo.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <WiFiManager.h>
@@ -56,6 +57,11 @@ String productName;
 String productBrand;
 String productCategory;
 
+//270 degree motor
+int pos_closed = 65;
+int pos_open = 225;
+
+
 unsigned long previousMillis = 0;
 unsigned long currentMillis = millis();
 const long interval = 900000; // 15 minutes in ms
@@ -63,6 +69,9 @@ const long interval = 900000; // 15 minutes in ms
 
 const uint16_t* images[] = {coke_recycle_gen, coke_ad, tswift_ad, pepsi_ad, coke_ad2, coke_recycle};
 int imageCount = sizeof(images) / sizeof(images[0]);
+
+Servo myServo;
+int servoPin = 17;
 
 LGFX lcd;
 LGFX_Sprite sprite(&lcd);
@@ -374,7 +383,7 @@ void fetchProductDetails() {
     }
 }
 
-
+/*
 void scanTaskcode(void * pvParameters) {
     for (;;) {
         if (Serial2.available()) {
@@ -397,6 +406,8 @@ void scanTaskcode(void * pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(10)); // Check for new data every 10ms
     }
 }
+*/
+
 
 void imageTaskcode(void * pvParameters) {
     uint32_t ulNotificationValue;
@@ -424,7 +435,7 @@ void imageTaskcode(void * pvParameters) {
     }
 }
 
-/*
+
 void scanTaskcode(void * pvParameters) {
 if (Serial2.available()) {
         String data = Serial2.readStringUntil('\n');
@@ -492,7 +503,7 @@ if (Serial2.available()) {
         //getSupabaseData(); // Assume this updates `dataExists` and `categoryMatch`
         Serial.println(dataExists);
         if (dataExists || categoryMatch) {
-            //myServo.write(pos_open); // Open door
+            myServo.write(pos_open); // Open door
             lcd.clearDisplay();
             //M5.Lcd.drawBitmap(0, 0, 320, 240, (uint16_t*)doorOpening);
             //M5.Spk.PlaySound(bin_opening, sizeof(bin_opening));
@@ -501,7 +512,7 @@ if (Serial2.available()) {
             
             delay(2500);
 
-            //myServo.write(pos_closed); // Close door
+            myServo.write(pos_closed); // Close door
             delay(100);
             lcd.clearDisplay();
             //M5.Lcd.drawBitmap(0, 0, 320, 240, (uint16_t*)scanWin_cra);
@@ -520,17 +531,19 @@ if (Serial2.available()) {
     }
 }
 
-*/
-
 
 void setup(){
-  lcd.init();
-  Serial2.begin(9600, SERIAL_8N1, SCANNER_RX, SCANNER_TX);
-  lcd.setBrightness(200);
-  lcd.setSwapBytes(true); // Adjust depending on your LCD driver
-  SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
-  sprite.createSprite(800, 480);
-  txtLayer.createSprite(480,100);
+    lcd.init();
+    Serial2.begin(9600, SERIAL_8N1, SCANNER_RX, SCANNER_TX);
+    myServo.attach(servoPin);
+    //unitName = getChipID();
+    lcd.setBrightness(200);
+    lcd.setSwapBytes(true); // Adjust depending on your LCD driver
+    SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
+    sprite.createSprite(800, 480);
+    txtLayer.createSprite(480,100);
+    myServo.write(pos_closed);
+    delay(2500);
 
   // Begin Wifi Configurations //
     WiFi.mode(WIFI_STA);
