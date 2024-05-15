@@ -71,7 +71,7 @@ const uint16_t* images[] = {coke_recycle_gen, coke_ad, tswift_ad, pepsi_ad, coke
 int imageCount = sizeof(images) / sizeof(images[0]);
 
 Servo myServo;
-int servoPin = 17;
+int servoPin = 27;
 
 LGFX lcd;
 LGFX_Sprite sprite(&lcd);
@@ -383,13 +383,13 @@ void fetchProductDetails() {
     }
 }
 
-/*
+
 void scanTaskcode(void * pvParameters) {
     for (;;) {
         if (Serial2.available()) {
             // Notify the image task to stop current operation
             xTaskNotify(imageTaskHandle, 0x01, eSetBits);
-
+            myServo.write(pos_open); // Open door
             lcd.clearDisplay();
             lcd.fillScreen(TFT_GREEN);
             lcd.setTextDatum(MC_DATUM);
@@ -406,7 +406,7 @@ void scanTaskcode(void * pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(10)); // Check for new data every 10ms
     }
 }
-*/
+
 
 
 void imageTaskcode(void * pvParameters) {
@@ -435,7 +435,7 @@ void imageTaskcode(void * pvParameters) {
     }
 }
 
-
+/*
 void scanTaskcode(void * pvParameters) {
 if (Serial2.available()) {
         String data = Serial2.readStringUntil('\n');
@@ -530,6 +530,8 @@ if (Serial2.available()) {
         }
     }
 }
+
+*/
 
 
 void setup(){
